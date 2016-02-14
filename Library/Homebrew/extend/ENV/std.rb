@@ -56,6 +56,9 @@ module Stdenv
 
     append "LDFLAGS", "-Wl,-headerpad_max_install_names" if OS.mac?
 
+    # Add this formula's library directory to the shared library search path.
+    prepend "LD_LIBRARY_PATH", formula.lib, File::PATH_SEPARATOR if formula && formula.name != "glibc" && OS.linux?
+
     if OS.linux? && !["glibc", "glibc25"].include?(formula && formula.name)
       # Set the dynamic linker
       glibc = Formula["glibc"] rescue nil
@@ -294,6 +297,7 @@ module Stdenv
   end
 
   def universal_binary
+    return unless OS.mac?
     check_for_compiler_universal_support
 
     append_to_cflags Hardware::CPU.universal_archs.as_arch_flags

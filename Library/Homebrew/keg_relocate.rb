@@ -79,7 +79,7 @@ class Keg
     patchelf = Formula["patchelf"]
     return unless patchelf.installed?
     glibc = Formula["glibc"]
-    cmd = "#{patchelf.opt_bin}/patchelf --set-rpath #{new_prefix}/lib"
+    cmd = "#{patchelf.bin}/patchelf --set-rpath #{new_prefix}/lib"
     if file.mach_o_executable?
       interpreter = if new_prefix == PREFIX_PLACEHOLDER || !glibc.installed? then
         "/lib64/ld-linux-x86-64.so.2"
@@ -94,16 +94,6 @@ class Keg
     cmd << " #{file}"
     puts "Setting RPATH of #{file}" if ARGV.debug?
     safe_system cmd
-  end
-
-  def change_dylib_id(id, file)
-    puts "Changing dylib ID of #{file}\n  from #{file.dylib_id}\n    to #{id}" if ARGV.debug?
-    install_name_tool("-id", id, file)
-  end
-
-  def change_install_name(old, new, file)
-    puts "Changing install name in #{file}\n  from #{old}\n    to #{new}" if ARGV.debug?
-    install_name_tool("-change", old, new, file)
   end
 
   # Detects the C++ dynamic libraries in place, scanning the dynamic links
@@ -134,16 +124,6 @@ class Keg
         yield file if hardlinks.add? file.stat.ino
       end
     end
-  end
-
-  def install_name_tool(*args)
-    @require_install_name_tool = true
-    tool = MacOS.install_name_tool
-    system(tool, *args) || raise(ErrorDuringExecution.new(tool, args))
-  end
-
-  def require_install_name_tool?
-    !!@require_install_name_tool
   end
 
   # If file is a dylib or bundle itself, look for the dylib named by

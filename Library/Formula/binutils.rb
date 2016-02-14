@@ -9,6 +9,8 @@ class Binutils < Formula
   option "with-default-names", "Do not prepend 'g' to the binary" if OS.linux?
   deprecated_option "default-names" => "with-default-names"
 
+  depends_on "zlib" => :recommended unless OS.mac?
+
   bottle do
     sha256 "ab393fd01e8bb2f9ff697efa3e14765eb32468a46380ce8c2db0d5baf1b588b5" => :el_capitan
     sha256 "299f9bbdf522b68b803ce6cdb109a34b018459f3815771b3530ba95e06ee19f7" => :yosemite
@@ -21,7 +23,7 @@ class Binutils < Formula
   patch :p1 do
     url "https://gist.githubusercontent.com/mistydemeo/f14c03c0c9ddfce97cf7/raw/2107e53002c34e41ade9b54629e670184e438d80/binutils_10.6.diff"
     sha256 "5ff40b9d7ad174d3c24edd8381471b8f5c408703111f0c90135ad0fffba452c2"
-  end
+  end if OS.mac?
 
   def install
     system "./configure", "--disable-debug",
@@ -41,6 +43,8 @@ class Binutils < Formula
   end
 
   test do
-    assert_match /main/, shell_output("#{bin}/gnm #{bin}/gnm")
+    # Better to check with?("default-names"), but that doesn't work.
+    nm = OS.linux? ? "nm" : "gnm"
+    assert_match /main/, shell_output("#{bin}/#{nm} #{bin}/#{nm}")
   end
 end
