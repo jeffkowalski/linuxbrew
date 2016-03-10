@@ -176,6 +176,7 @@ module Homebrew
           "libmacfuse_i64.2.dylib", # OSXFuse MacFuse compatibility layer
           "libosxfuse_i32.2.dylib", # OSXFuse
           "libosxfuse_i64.2.dylib", # OSXFuse
+          "libosxfuse.2.dylib", # OSXFuse
           "libTrAPI.dylib", # TrAPI / Endpoint Security VPN
           "libntfs-3g.*.dylib", # NTFS-3G
           "libntfs.*.dylib", # NTFS-3G
@@ -239,6 +240,7 @@ module Homebrew
           "libfuse_ino64.la", # MacFuse
           "libosxfuse_i32.la", # OSXFuse
           "libosxfuse_i64.la", # OSXFuse
+          "libosxfuse.la", # OSXFuse
           "libntfs-3g.la", # NTFS-3G
           "libntfs.la", # NTFS-3G
           "libublio.la", # NTFS-3G
@@ -897,10 +899,11 @@ module Homebrew
       end
 
       def check_DYLD_vars
-        found = ENV.keys.grep(/^DYLD_/)
+        dyld = OS.mac? ? "DYLD" : "LD"
+        found = ENV.keys.grep(/^#{dyld}_/)
         return if found.empty?
         s = inject_file_list found.map { |e| "#{e}: #{ENV.fetch(e)}" }, <<-EOS.undent
-          Setting DYLD_* vars can break dynamic linking.
+          Setting #{dyld}_* vars can break dynamic linking.
           Set variables:
         EOS
         if found.include? "DYLD_INSERT_LIBRARIES"
@@ -1012,7 +1015,7 @@ module Homebrew
       def check_git_newline_settings
         return unless Utils.git_available?
 
-        autocrlf = `git config --get core.autocrlf`.chomp
+        autocrlf = HOMEBREW_REPOSITORY.cd { `git config --get core.autocrlf`.chomp }
 
         if autocrlf == "true" then <<-EOS.undent
         Suspicious Git newline settings found.
@@ -1239,6 +1242,7 @@ module Homebrew
       end
 
       def check_for_non_prefixed_findutils
+        return unless OS.mac?
         findutils = Formula["findutils"]
         return unless findutils.any_version_installed?
 

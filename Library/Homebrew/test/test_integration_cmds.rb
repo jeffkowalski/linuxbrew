@@ -1,6 +1,5 @@
 require "bundler"
 require "testing_env"
-require "core_formula_repository"
 require "fileutils"
 require "pathname"
 
@@ -146,12 +145,17 @@ class IntegrationCommandTests < Homebrew::TestCase
     cmd("install", "--build-bottle", testball)
     assert_match "Formula not from core or any taps",
                  cmd_fail("bottle", "--no-revision", testball)
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "https://example.com/testball-0.1.tar.gz"
       end
     EOS
+    # `brew bottle` should not fail with dead symlink
+    # https://github.com/Homebrew/homebrew/issues/49007
+    (HOMEBREW_CELLAR/"testball/0.1").cd do
+      FileUtils.ln_s "not-exist", "symlink"
+    end
     assert_match(/testball-0\.1.*\.bottle\.tar\.gz/,
                   cmd_output("bottle", "--no-revision", "testball"))
   ensure
@@ -176,7 +180,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_readall
-    repo = CoreFormulaRepository.new
+    repo = CoreTap.new
     formula_file = repo.formula_dir/"foo.rb"
     formula_file.write <<-EOS.undent
       class Foo < Formula
@@ -200,6 +204,7 @@ class IntegrationCommandTests < Homebrew::TestCase
       shutup do
         system "git", "init"
         system "git", "remote", "add", "origin", "https://github.com/Homebrew/homebrew-foo"
+        FileUtils.touch "readme"
         system "git", "add", "--all"
         system "git", "commit", "-m", "init"
       end
@@ -215,12 +220,14 @@ class IntegrationCommandTests < Homebrew::TestCase
     assert_match "Unpinned homebrew/foo", cmd("tap-unpin", "homebrew/foo")
     assert_match "Tapped", cmd("tap", "homebrew/bar", path/".git")
     assert_match "Untapped", cmd("untap", "homebrew/bar")
+    assert_equal "", cmd("tap", "homebrew/bar", path/".git", "-q", "--full")
+    assert_match "Untapped", cmd("untap", "homebrew/bar")
   ensure
     Tap::TAP_DIRECTORY.rmtree
   end
 
   def test_missing
-    repo = CoreFormulaRepository.new
+    repo = CoreTap.new
     foo_file = repo.formula_dir/"foo.rb"
     foo_file.write <<-EOS.undent
       class Foo < Formula
@@ -263,7 +270,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_cat
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     content = <<-EOS.undent
       class Testball < Formula
         url "https://example.com/testball-0.1.tar.gz"
@@ -277,7 +284,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_desc
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         desc "Some test"
@@ -292,7 +299,7 @@ class IntegrationCommandTests < Homebrew::TestCase
 
   def test_edit
     (HOMEBREW_REPOSITORY/".git").mkpath
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "https://example.com/testball-0.1.tar.gz"
@@ -313,7 +320,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_info
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "https://example.com/testball-0.1.tar.gz"
@@ -337,7 +344,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_unpack
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -355,7 +362,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_options
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -371,7 +378,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_outdated
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -386,7 +393,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_upgrade
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -414,7 +421,7 @@ class IntegrationCommandTests < Homebrew::TestCase
     apps_dir = Pathname.new(home).join("Applications")
     apps_dir.mkpath
 
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "https://example.com/testball-0.1.tar.gz"
@@ -436,7 +443,7 @@ class IntegrationCommandTests < Homebrew::TestCase
     apps_dir = Pathname.new(home).join("Applications")
     apps_dir.mkpath
 
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "https://example.com/testball-0.1.tar.gz"
@@ -457,7 +464,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_pin_unpin
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -486,7 +493,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_reinstall
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -537,7 +544,7 @@ class IntegrationCommandTests < Homebrew::TestCase
     url = "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
     cmd("create", url, {"HOMEBREW_EDITOR" => "/bin/cat"})
 
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     assert formula_file.exist?, "The formula source should have been created"
     assert_match %(sha256 "#{TESTBALL_SHA256}"), formula_file.read
   ensure
@@ -546,7 +553,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_fetch
-    formula_file = CoreFormulaRepository.new.formula_dir/"testball.rb"
+    formula_file = CoreTap.new.formula_dir/"testball.rb"
     formula_file.write <<-EOS.undent
       class Testball < Formula
         url "file://#{File.expand_path("..", __FILE__)}/tarballs/testball-0.1.tbz"
@@ -563,7 +570,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_deps
-    formula_dir = CoreFormulaRepository.new.formula_dir
+    formula_dir = CoreTap.new.formula_dir
     formula_file1 = formula_dir/"testball1.rb"
     formula_file2 = formula_dir/"testball2.rb"
     formula_file3 = formula_dir/"testball3.rb"
@@ -596,7 +603,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_uses
-    formula_dir = CoreFormulaRepository.new.formula_dir
+    formula_dir = CoreTap.new.formula_dir
     formula_file1 = formula_dir/"testball1.rb"
     formula_file2 = formula_dir/"testball2.rb"
     formula_file3 = formula_dir/"testball3.rb"
@@ -618,7 +625,7 @@ class IntegrationCommandTests < Homebrew::TestCase
       end
     EOS
 
-    assert_equal "testball1\ntestball2", cmd("uses", "--recursive", "testball3")
+    assert_equal "testball1\ntestball2", cmd("uses", "--recursive", "testball3").split.sort.join("\n")
     assert_equal "testball2", cmd("uses", "testball3")
     assert_equal "", cmd("uses", "testball1")
   ensure
@@ -640,7 +647,7 @@ class IntegrationCommandTests < Homebrew::TestCase
   end
 
   def test_leaves
-    formula_dir = CoreFormulaRepository.new.formula_dir
+    formula_dir = CoreTap.new.formula_dir
     formula_file1 = formula_dir/"testball1.rb"
     formula_file2 = formula_dir/"testball2.rb"
     formula_file1.write <<-EOS.undent

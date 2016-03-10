@@ -5,6 +5,12 @@ class Glibc < Formula
   sha256 "2e293f714187044633264cd9ce0183c70c3aa960a2f77812a6390a3822694d15"
   # tag "linuxbrew"
 
+  bottle do
+    prefix "/home/linuxbrew/.linuxbrew"
+    cellar "/home/linuxbrew/.linuxbrew/Cellar"
+    sha256 "80eef9cbc1f5b2907bc137ae1448175707dba1eed6a5d8764d9ddcfd74c6b9da" => :x86_64_linux
+  end
+
   option "with-current-kernel", "Compile for compatibility with kernel not older than your current one"
 
   # binutils 2.20 or later is required
@@ -56,18 +62,8 @@ class Glibc < Formula
     brew_localtime = Pathname.new prefix/"etc/localtime"
     (prefix/"etc").install_symlink sys_localtime if sys_localtime.exist? && !brew_localtime.exist?
 
-    # Fix up previously installed executables.
-    if Formula["patchelf"].installed?
-      %w[patchelf binutils].each do |s|
-        f = Formula[s]
-        if f.installed?
-          ohai "Fixing up #{f.full_name}..."
-          keg = Keg.new f.prefix
-          keg.relocate_install_names Keg::PREFIX_PLACEHOLDER, HOMEBREW_PREFIX,
-            Keg::CELLAR_PLACEHOLDER, HOMEBREW_CELLAR
-        end
-      end
-    end
+    # Install ld.so symlink.
+    ln_sf lib/"ld-linux-x86-64.so.2", HOMEBREW_PREFIX/"lib/ld.so"
   end
 
   test do

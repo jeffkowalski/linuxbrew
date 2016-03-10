@@ -1,14 +1,14 @@
 class Node < Formula
   desc "Platform built on the V8 JavaScript runtime to build network applications"
   homepage "https://nodejs.org/"
-  url "https://nodejs.org/dist/v5.6.0/node-v5.6.0.tar.gz"
-  sha256 "3af2cc5e5970afc83e59f2065fea2e2df846a544a100cd3c0527f0db05bec27f"
+  url "https://nodejs.org/dist/v5.7.1/node-v5.7.1.tar.xz"
+  sha256 "029ed8aeb997c68d1a901cd837af02d24b6b5e20a4ff93bed090fd289f91a9a1"
   head "https://github.com/nodejs/node.git"
 
   bottle do
-    sha256 "6c1cea54bc89868e24f1ee79b8e07c59fbe21b2a0fc0b133febd297ec4749d74" => :el_capitan
-    sha256 "7b524f06adae8b0fc5bd194a9910cb9587c71c44b586863bacb8474120a006a8" => :yosemite
-    sha256 "6936e601755a16ae7aaf4b7f0856466a59b5c1eb4e8c957e7cd64303b6a4df77" => :mavericks
+    sha256 "9ea30f15633d87b6abaea3d9e724e1af14795fdb37e693844a53eb0bfac653e5" => :el_capitan
+    sha256 "5b415bc3f2c5c7638e56fb5840bbcbaa64e49f695e1e0a1e4d27914227d275f0" => :yosemite
+    sha256 "4b12421992a0113afaa41cf287b3783d107c60069c5590a4db73419848d51861" => :mavericks
   end
 
   option "with-debug", "Build with debugger hooks"
@@ -118,8 +118,8 @@ class Node < Formula
     ["man1", "man3", "man5", "man7"].each do |man|
       # Dirs must exist first: https://github.com/Homebrew/homebrew/issues/35969
       mkdir_p HOMEBREW_PREFIX/"share/man/#{man}"
-      rm_f Dir[HOMEBREW_PREFIX/"share/man/#{man}/{npm.,npm-,npmrc.}*"]
-      ln_sf Dir[libexec/"npm/lib/node_modules/npm/man/#{man}/npm*"], HOMEBREW_PREFIX/"share/man/#{man}"
+      rm_f Dir[HOMEBREW_PREFIX/"share/man/#{man}/{npm.,npm-,npmrc.,package.json.}*"]
+      ln_sf Dir[libexec/"npm/lib/node_modules/npm/man/#{man}/{npm,package.json}*"], HOMEBREW_PREFIX/"share/man/#{man}"
     end
 
     npm_root = node_modules/"npm"
